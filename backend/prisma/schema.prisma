@@ -1,0 +1,234 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+model Marca {
+  id        Int      @id @default(autoincrement())
+  nombre    String   @unique @db.VarChar(100)
+  modelos   Modelo[]
+  creadoEn  DateTime @default(now())
+
+  @@map("marcas")
+}
+
+model Modelo {
+  id          Int        @id @default(autoincrement())
+  nombre      String     @db.VarChar(100)
+  marcaId     Int
+  marca       Marca      @relation(fields: [marcaId], references: [id])
+  submarcas   Submarca[]
+  creadoEn    DateTime   @default(now())
+
+  @@unique([nombre, marcaId])
+  @@map("modelos")
+}
+
+model Submarca {
+  id         Int        @id @default(autoincrement())
+  nombre     String     @db.VarChar(100)   // Ej: "Limited", "Base", "Sport"
+  modeloId   Int
+  modelo     Modelo     @relation(fields: [modeloId], references: [id])
+  vehiculos  Vehiculo[]
+  creadoEn   DateTime   @default(now())
+
+  @@unique([nombre, modeloId])
+  @@map("submarcas")
+}
+
+// ------------------------------------------------------------
+//  PROPIETARIO / CONDUCTOR
+// ------------------------------------------------------------
+
+model Propietario {
+  id         Int        @id @default(autoincrement())
+  nombre     String     @db.VarChar(150)
+  apellido   String     @db.VarChar(150)
+  telefono   String?    @db.VarChar(20)
+  email      String?    @unique @db.VarChar(200)
+  vehiculos  Vehiculo[]
+  creadoEn   DateTime   @default(now())
+  actualizadoEn DateTime @updatedAt
+
+  @@map("propietarios")
+}
+
+// ------------------------------------------------------------
+//  VEHÍCULO  (entidad principal)
+// ------------------------------------------------------------
+
+model Vehiculo {
+  id               Int      @id @default(autoincrement())
+
+  // Identificadores únicos
+  numPlaca         String   @unique @db.VarChar(20)
+  numSerie         String   @unique @db.VarChar(50)   // VIN / NIV
+
+  // Catálogos
+  submarcaId       Int
+  submarca         Submarca @relation(fields: [submarcaId], references: [id])
+
+  // Datos generales
+  anio             Int                                 // Año del modelo
+  color            String   @db.VarChar(50)
+  kilometraje      Int      @default(0)               // Km actuales
+
+  // Propietario asignado (puede estar sin asignar)
+  propietarioId    Int?
+  propietario      Propietario? @relation(fields: [propietarioId], references: [id])
+
+  // Relaciones con servicios
+  serviciosAceite  ServicioAceite[]
+  verificaciones   Verificacion[]
+  tenencias        Tenencia[]
+
+  creadoEn         DateTime @default(now())
+  actualizadoEn    DateTime @updatedAt
+
+  @@map("vehiculos")
+}
+
+// ------------------------------------------------------------
+//  SERVICIO DE ACEITE
+//  - Alerta por km Y por fecha (ambos configurables)
+// ------------------------------------------------------------
+
+model ServicioAceite {
+  id                   Int       @id @default(autoincrement())
+  vehiculoId           Int
+  vehiculo             Vehiculo  @relation(fields: [vehiculoId], references: [id])
+
+  // Último servicio realizado
+  fechaUltimoServicio  DateTime
+  kmUltimoServicio     Int                             // Km al momento del servicio
+
+  // Configuración de alertas
+  intervaloKm          Int       @default(5000)        // Cada cuántos km
+  intervaloMeses       Int       @default(3)           // Cada cuántos meses
+
+  // Próximo servicio (calculado / guardado)
+  proximaFecha         DateTime                        // = fechaUltimo + intervaloMeses
+  proximoKm            Int                             // = kmUltimo + intervaloKm
+
+  // Historial de servicios
+  historial            HistorialAceite[]
+
+  creadoEn             DateTime  @default(now())
+  actualizadoEn        DateTime  @updatedAt
+
+  @@map("servicios_aceite")
+}
+
+model HistorialAceite {
+  id               Int            @id @default(autoincrement())
+  servicioId       Int
+  servicio         ServicioAceite @relation(fields: [servicioId], references: [id])
+
+  fecha            DateTime
+  kmAlServicio     Int
+  tipoAceite       String?        @db.VarChar(100)    // Ej: "5W-30 Sintético"
+  taller           String?        @db.VarChar(200)
+  costo            Decimal?       @db.Decimal(10, 2)
+  notas            String?        @db.Text
+
+  creadoEn         DateTime       @default(now())
+
+  @@map("historial_aceite")
+}
+
+// ------------------------------------------------------------
+//  VERIFICACIÓN VEHICULAR  (anual / semestral según estado)
+// ------------------------------------------------------------
+
+model Verificacion {
+  id                   Int       @id @default(autoincrement())
+  vehiculoId           Int
+  vehiculo             Vehiculo  @relation(fields: [vehiculoId], references: [id])
+
+  // Última verificación
+  fechaUltima          DateTime
+  resultado            ResultadoVerificacion @default(APROBADO)
+  holograma            String?   @db.VarChar(20)      // Número de holograma
+  centro               String?   @db.VarChar(200)     // Centro de verificación
+
+  // Próxima verificación (calculada)
+  proximaFecha         DateTime
+  intervaloMeses       Int       @default(12)          // 12 = anual, 6 = semestral
+
+  // Historial
+  historial            HistorialVerificacion[]
+
+  creadoEn             DateTime  @default(now())
+  actualizadoEn        DateTime  @updatedAt
+
+  @@map("verificaciones")
+}
+
+model HistorialVerificacion {
+  id             Int                   @id @default(autoincrement())
+  verificacionId Int
+  verificacion   Verificacion          @relation(fields: [verificacionId], references: [id])
+
+  fecha          DateTime
+  resultado      ResultadoVerificacion
+  holograma      String?               @db.VarChar(20)
+  centro         String?               @db.VarChar(200)
+  costo          Decimal?              @db.Decimal(10, 2)
+  notas          String?               @db.Text
+
+  creadoEn       DateTime              @default(now())
+
+  @@map("historial_verificacion")
+}
+
+enum ResultadoVerificacion {
+  APROBADO
+  RECHAZADO
+  NO_VERIFICADO
+}
+
+// ------------------------------------------------------------
+//  TENENCIA  (impuesto anual)
+// ------------------------------------------------------------
+
+model Tenencia {
+  id             Int       @id @default(autoincrement())
+  vehiculoId     Int
+  vehiculo       Vehiculo  @relation(fields: [vehiculoId], references: [id])
+
+  anioFiscal     Int                                   // Año al que corresponde
+  fechaPago      DateTime?                             // null = pendiente de pago
+  monto          Decimal?  @db.Decimal(10, 2)
+  folio          String?   @db.VarChar(100)            // Folio de pago
+  pagado         Boolean   @default(false)
+  fechaLimite    DateTime                              // Fecha límite para pagar sin recargo
+
+  // Historial de pagos anteriores
+  historial      HistorialTenencia[]
+
+  creadoEn       DateTime  @default(now())
+  actualizadoEn  DateTime  @updatedAt
+
+  @@unique([vehiculoId, anioFiscal])                  // Una tenencia por año por vehículo
+  @@map("tenencias")
+}
+
+model HistorialTenencia {
+  id          Int       @id @default(autoincrement())
+  tenenciaId  Int
+  tenencia    Tenencia  @relation(fields: [tenenciaId], references: [id])
+
+  anioFiscal  Int
+  fechaPago   DateTime
+  monto       Decimal   @db.Decimal(10, 2)
+  folio       String?   @db.VarChar(100)
+  notas       String?   @db.Text
+
+  creadoEn    DateTime  @default(now())
+
+  @@map("historial_tenencia")
+}

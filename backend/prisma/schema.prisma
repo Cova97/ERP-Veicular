@@ -7,34 +7,48 @@ datasource db {
   provider = "mysql"
 }
 
+// ------------------------------------------------------------
+//  ENUM GLOBAL — Status de cualquier servicio
+// ------------------------------------------------------------
+
+enum StatusServicio {
+  PENDIENTE    // Aún no se ha realizado / ya venció
+  A_TIEMPO     // Próximo a vencer, pero dentro del rango
+  FINALIZADO   // Servicio realizado y al corriente
+}
+
+// ------------------------------------------------------------
+//  CATÁLOGOS — Marca / Modelo / Submarca
+// ------------------------------------------------------------
+
 model Marca {
-  id        Int      @id @default(autoincrement())
-  nombre    String   @unique @db.VarChar(100)
-  modelos   Modelo[]
-  creadoEn  DateTime @default(now())
+  id       Int      @id @default(autoincrement())
+  nombre   String   @unique @db.VarChar(100)
+  modelos  Modelo[]
+  creadoEn DateTime @default(now())
 
   @@map("marcas")
 }
 
 model Modelo {
-  id          Int        @id @default(autoincrement())
-  nombre      String     @db.VarChar(100)
-  marcaId     Int
-  marca       Marca      @relation(fields: [marcaId], references: [id])
-  submarcas   Submarca[]
-  creadoEn    DateTime   @default(now())
+  id        Int        @id @default(autoincrement())
+  nombre    String     @db.VarChar(100)
+  marcaId   Int
+  marca     Marca      @relation(fields: [marcaId], references: [id])
+  submarcas Submarca[]
+  creadoEn  DateTime   @default(now())
 
   @@unique([nombre, marcaId])
   @@map("modelos")
 }
 
 model Submarca {
-  id         Int        @id @default(autoincrement())
-  nombre     String     @db.VarChar(100)   // Ej: "Limited", "Base", "Sport"
-  modeloId   Int
-  modelo     Modelo     @relation(fields: [modeloId], references: [id])
-  vehiculos  Vehiculo[]
-  creadoEn   DateTime   @default(now())
+  id        Int        @id @default(autoincrement())
+  nombre    String     @db.VarChar(100) // Ej: "Limited", "Base", "Sport"
+  modeloId  Int
+  modelo    Modelo     @relation(fields: [modeloId], references: [id])
+  vehiculos Vehiculo[]
+  creadoEn  DateTime   @default(now())
 
   @@unique([nombre, modeloId])
   @@map("submarcas")
@@ -45,14 +59,14 @@ model Submarca {
 // ------------------------------------------------------------
 
 model Propietario {
-  id         Int        @id @default(autoincrement())
-  nombre     String     @db.VarChar(150)
-  apellido   String     @db.VarChar(150)
-  telefono   String?    @db.VarChar(20)
-  email      String?    @unique @db.VarChar(200)
-  vehiculos  Vehiculo[]
-  creadoEn   DateTime   @default(now())
-  actualizadoEn DateTime @updatedAt
+  id            Int        @id @default(autoincrement())
+  nombre        String     @db.VarChar(150)
+  apellido      String     @db.VarChar(150)
+  telefono      String?    @db.VarChar(20)
+  email         String?    @unique @db.VarChar(200)
+  vehiculos     Vehiculo[]
+  creadoEn      DateTime   @default(now())
+  actualizadoEn DateTime   @updatedAt
 
   @@map("propietarios")
 }
@@ -62,133 +76,123 @@ model Propietario {
 // ------------------------------------------------------------
 
 model Vehiculo {
-  id               Int      @id @default(autoincrement())
+  id            Int      @id @default(autoincrement())
 
   // Identificadores únicos
-  numPlaca         String   @unique @db.VarChar(20)
-  numSerie         String   @unique @db.VarChar(50)   // VIN / NIV
+  numPlaca      String   @unique @db.VarChar(20)
+  numSerie      String   @unique @db.VarChar(50) // VIN / NIV
 
   // Catálogos
-  submarcaId       Int
-  submarca         Submarca @relation(fields: [submarcaId], references: [id])
+  submarcaId    Int
+  submarca      Submarca @relation(fields: [submarcaId], references: [id])
 
   // Datos generales
-  anio             Int                                 // Año del modelo
-  color            String   @db.VarChar(50)
-  kilometraje      Int      @default(0)               // Km actuales
+  anio          Int
+  color         String   @db.VarChar(50)
+  kilometraje   Int      @default(0) // Km actuales
 
-  // Propietario asignado (puede estar sin asignar)
-  propietarioId    Int?
-  propietario      Propietario? @relation(fields: [propietarioId], references: [id])
+  // Propietario asignado (opcional)
+  propietarioId Int?
+  propietario   Propietario? @relation(fields: [propietarioId], references: [id])
 
-  // Relaciones con servicios
-  serviciosAceite  ServicioAceite[]
-  verificaciones   Verificacion[]
-  tenencias        Tenencia[]
+  // Servicios
+  serviciosAceite       ServicioAceite[]
+  verificaciones        Verificacion[]
+  tenencias             Tenencia[]
+  serviciosLlantas      ServicioLlantas[]
+  serviciosAmortiguador ServicioAmortiguador[]
+  serviciosFreno        ServicioFreno[]
 
-  creadoEn         DateTime @default(now())
-  actualizadoEn    DateTime @updatedAt
+  creadoEn      DateTime @default(now())
+  actualizadoEn DateTime @updatedAt
 
   @@map("vehiculos")
 }
 
 // ------------------------------------------------------------
-//  SERVICIO DE ACEITE
-//  - Alerta por km Y por fecha (ambos configurables)
+//  SERVICIO DE ACEITE  (km + fecha)
 // ------------------------------------------------------------
 
 model ServicioAceite {
-  id                   Int       @id @default(autoincrement())
-  vehiculoId           Int
-  vehiculo             Vehiculo  @relation(fields: [vehiculoId], references: [id])
+  id         Int            @id @default(autoincrement())
+  vehiculoId Int
+  vehiculo   Vehiculo       @relation(fields: [vehiculoId], references: [id])
+  status     StatusServicio @default(A_TIEMPO)
 
-  // Último servicio realizado
-  fechaUltimoServicio  DateTime
-  kmUltimoServicio     Int                             // Km al momento del servicio
+  // Último servicio
+  fechaUltimoServicio DateTime
+  kmUltimoServicio    Int
 
-  // Configuración de alertas
-  intervaloKm          Int       @default(5000)        // Cada cuántos km
-  intervaloMeses       Int       @default(3)           // Cada cuántos meses
+  // Intervalos configurables
+  intervaloKm    Int @default(5000) // Cada cuántos km
+  intervaloMeses Int @default(3)    // Cada cuántos meses
 
-  // Próximo servicio (calculado / guardado)
-  proximaFecha         DateTime                        // = fechaUltimo + intervaloMeses
-  proximoKm            Int                             // = kmUltimo + intervaloKm
+  // Próximo servicio
+  proximaFecha DateTime
+  proximoKm    Int
 
-  // Historial de servicios
-  historial            HistorialAceite[]
+  historial HistorialAceite[]
 
-  creadoEn             DateTime  @default(now())
-  actualizadoEn        DateTime  @updatedAt
+  creadoEn      DateTime @default(now())
+  actualizadoEn DateTime @updatedAt
 
   @@map("servicios_aceite")
 }
 
 model HistorialAceite {
-  id               Int            @id @default(autoincrement())
-  servicioId       Int
-  servicio         ServicioAceite @relation(fields: [servicioId], references: [id])
+  id         Int            @id @default(autoincrement())
+  servicioId Int
+  servicio   ServicioAceite @relation(fields: [servicioId], references: [id])
 
-  fecha            DateTime
-  kmAlServicio     Int
-  tipoAceite       String?        @db.VarChar(100)    // Ej: "5W-30 Sintético"
-  taller           String?        @db.VarChar(200)
-  costo            Decimal?       @db.Decimal(10, 2)
-  notas            String?        @db.Text
-
-  creadoEn         DateTime       @default(now())
+  fecha        DateTime
+  kmAlServicio Int
+  tipoAceite   String?  @db.VarChar(100) // Ej: "5W-30 Sintético"
+  taller       String?  @db.VarChar(200)
+  costo        Decimal? @db.Decimal(10, 2)
+  notas        String?  @db.Text
+  creadoEn     DateTime @default(now())
 
   @@map("historial_aceite")
 }
 
 // ------------------------------------------------------------
-//  VERIFICACIÓN VEHICULAR  (anual / semestral según estado)
+//  VERIFICACIÓN VEHICULAR  (por fecha)
 // ------------------------------------------------------------
 
 model Verificacion {
-  id                   Int       @id @default(autoincrement())
-  vehiculoId           Int
-  vehiculo             Vehiculo  @relation(fields: [vehiculoId], references: [id])
+  id         Int            @id @default(autoincrement())
+  vehiculoId Int
+  vehiculo   Vehiculo       @relation(fields: [vehiculoId], references: [id])
+  status     StatusServicio @default(A_TIEMPO)
 
-  // Última verificación
-  fechaUltima          DateTime
-  resultado            ResultadoVerificacion @default(APROBADO)
-  holograma            String?   @db.VarChar(20)      // Número de holograma
-  centro               String?   @db.VarChar(200)     // Centro de verificación
+  fechaUltima    DateTime
+  holograma      String?  @db.VarChar(20)  // Número de holograma
+  centro         String?  @db.VarChar(200) // Centro de verificación
 
-  // Próxima verificación (calculada)
-  proximaFecha         DateTime
-  intervaloMeses       Int       @default(12)          // 12 = anual, 6 = semestral
+  proximaFecha   DateTime
+  intervaloMeses Int      @default(12) // 12 = anual, 6 = semestral
 
-  // Historial
-  historial            HistorialVerificacion[]
+  historial HistorialVerificacion[]
 
-  creadoEn             DateTime  @default(now())
-  actualizadoEn        DateTime  @updatedAt
+  creadoEn      DateTime @default(now())
+  actualizadoEn DateTime @updatedAt
 
   @@map("verificaciones")
 }
 
 model HistorialVerificacion {
-  id             Int                   @id @default(autoincrement())
+  id             Int          @id @default(autoincrement())
   verificacionId Int
-  verificacion   Verificacion          @relation(fields: [verificacionId], references: [id])
+  verificacion   Verificacion @relation(fields: [verificacionId], references: [id])
 
-  fecha          DateTime
-  resultado      ResultadoVerificacion
-  holograma      String?               @db.VarChar(20)
-  centro         String?               @db.VarChar(200)
-  costo          Decimal?              @db.Decimal(10, 2)
-  notas          String?               @db.Text
-
-  creadoEn       DateTime              @default(now())
+  fecha     DateTime
+  holograma String?  @db.VarChar(20)
+  centro    String?  @db.VarChar(200)
+  costo     Decimal? @db.Decimal(10, 2)
+  notas     String?  @db.Text
+  creadoEn  DateTime @default(now())
 
   @@map("historial_verificacion")
-}
-
-enum ResultadoVerificacion {
-  APROBADO
-  RECHAZADO
-  NO_VERIFICADO
 }
 
 // ------------------------------------------------------------
@@ -196,39 +200,154 @@ enum ResultadoVerificacion {
 // ------------------------------------------------------------
 
 model Tenencia {
-  id             Int       @id @default(autoincrement())
-  vehiculoId     Int
-  vehiculo       Vehiculo  @relation(fields: [vehiculoId], references: [id])
+  id         Int            @id @default(autoincrement())
+  vehiculoId Int
+  vehiculo   Vehiculo       @relation(fields: [vehiculoId], references: [id])
+  status     StatusServicio @default(A_TIEMPO)
 
-  anioFiscal     Int                                   // Año al que corresponde
-  fechaPago      DateTime?                             // null = pendiente de pago
-  monto          Decimal?  @db.Decimal(10, 2)
-  folio          String?   @db.VarChar(100)            // Folio de pago
-  pagado         Boolean   @default(false)
-  fechaLimite    DateTime                              // Fecha límite para pagar sin recargo
+  anioFiscal  Int
+  fechaPago   DateTime? // null = pendiente
+  monto       Decimal?  @db.Decimal(10, 2)
+  folio       String?   @db.VarChar(100)
+  pagado      Boolean   @default(false)
+  fechaLimite DateTime
 
-  // Historial de pagos anteriores
-  historial      HistorialTenencia[]
+  historial HistorialTenencia[]
 
-  creadoEn       DateTime  @default(now())
-  actualizadoEn  DateTime  @updatedAt
+  creadoEn      DateTime @default(now())
+  actualizadoEn DateTime @updatedAt
 
-  @@unique([vehiculoId, anioFiscal])                  // Una tenencia por año por vehículo
+  @@unique([vehiculoId, anioFiscal])
   @@map("tenencias")
 }
 
 model HistorialTenencia {
-  id          Int       @id @default(autoincrement())
-  tenenciaId  Int
-  tenencia    Tenencia  @relation(fields: [tenenciaId], references: [id])
+  id         Int      @id @default(autoincrement())
+  tenenciaId Int
+  tenencia   Tenencia @relation(fields: [tenenciaId], references: [id])
 
-  anioFiscal  Int
-  fechaPago   DateTime
-  monto       Decimal   @db.Decimal(10, 2)
-  folio       String?   @db.VarChar(100)
-  notas       String?   @db.Text
-
-  creadoEn    DateTime  @default(now())
+  anioFiscal Int
+  fechaPago  DateTime
+  monto      Decimal  @db.Decimal(10, 2)
+  folio      String?  @db.VarChar(100)
+  notas      String?  @db.Text
+  creadoEn   DateTime @default(now())
 
   @@map("historial_tenencia")
+}
+
+// ------------------------------------------------------------
+//  SERVICIO DE LLANTAS  (por km)
+// ------------------------------------------------------------
+
+model ServicioLlantas {
+  id         Int            @id @default(autoincrement())
+  vehiculoId Int
+  vehiculo   Vehiculo       @relation(fields: [vehiculoId], references: [id])
+  status     StatusServicio @default(A_TIEMPO)
+
+  kmUltimoServicio Int
+  intervaloKm      Int @default(40000) // Rotación/cambio cada 40,000 km
+  proximoKm        Int
+
+  historial HistorialLlantas[]
+
+  creadoEn      DateTime @default(now())
+  actualizadoEn DateTime @updatedAt
+
+  @@map("servicios_llantas")
+}
+
+model HistorialLlantas {
+  id         Int             @id @default(autoincrement())
+  servicioId Int
+  servicio   ServicioLlantas @relation(fields: [servicioId], references: [id])
+
+  fecha        DateTime
+  kmAlServicio Int
+  tipoServicio String?  @db.VarChar(100) // Ej: "Rotación", "Cambio completo", "Balanceo"
+  marcaLlanta  String?  @db.VarChar(100)
+  taller       String?  @db.VarChar(200)
+  costo        Decimal? @db.Decimal(10, 2)
+  notas        String?  @db.Text
+  creadoEn     DateTime @default(now())
+
+  @@map("historial_llantas")
+}
+
+// ------------------------------------------------------------
+//  SERVICIO DE AMORTIGUADORES  (por km)
+// ------------------------------------------------------------
+
+model ServicioAmortiguador {
+  id         Int            @id @default(autoincrement())
+  vehiculoId Int
+  vehiculo   Vehiculo       @relation(fields: [vehiculoId], references: [id])
+  status     StatusServicio @default(A_TIEMPO)
+
+  kmUltimoServicio Int
+  intervaloKm      Int @default(80000) // Cada 80,000 km
+  proximoKm        Int
+
+  historial HistorialAmortiguador[]
+
+  creadoEn      DateTime @default(now())
+  actualizadoEn DateTime @updatedAt
+
+  @@map("servicios_amortiguador")
+}
+
+model HistorialAmortiguador {
+  id         Int                  @id @default(autoincrement())
+  servicioId Int
+  servicio   ServicioAmortiguador @relation(fields: [servicioId], references: [id])
+
+  fecha        DateTime
+  kmAlServicio Int
+  tipoServicio String?  @db.VarChar(100) // Ej: "Revisión", "Cambio delantero", "Cambio trasero"
+  marca        String?  @db.VarChar(100)
+  taller       String?  @db.VarChar(200)
+  costo        Decimal? @db.Decimal(10, 2)
+  notas        String?  @db.Text
+  creadoEn     DateTime @default(now())
+
+  @@map("historial_amortiguador")
+}
+
+// ------------------------------------------------------------
+//  SERVICIO DE FRENOS  (por km)
+// ------------------------------------------------------------
+
+model ServicioFreno {
+  id         Int            @id @default(autoincrement())
+  vehiculoId Int
+  vehiculo   Vehiculo       @relation(fields: [vehiculoId], references: [id])
+  status     StatusServicio @default(A_TIEMPO)
+
+  kmUltimoServicio Int
+  intervaloKm      Int @default(30000) // Cada 30,000 km
+  proximoKm        Int
+
+  historial HistorialFreno[]
+
+  creadoEn      DateTime @default(now())
+  actualizadoEn DateTime @updatedAt
+
+  @@map("servicios_freno")
+}
+
+model HistorialFreno {
+  id         Int           @id @default(autoincrement())
+  servicioId Int
+  servicio   ServicioFreno @relation(fields: [servicioId], references: [id])
+
+  fecha        DateTime
+  kmAlServicio Int
+  tipoServicio String?  @db.VarChar(100) // Ej: "Pastillas", "Discos", "Líquido de frenos"
+  taller       String?  @db.VarChar(200)
+  costo        Decimal? @db.Decimal(10, 2)
+  notas        String?  @db.Text
+  creadoEn     DateTime @default(now())
+
+  @@map("historial_freno")
 }

@@ -1,65 +1,125 @@
-import Image from "next/image";
+'use client'
+
+import { useState } from 'react'
+import { Header } from '@/components/erp/header'
+import { Sidebar, type ViewType } from '@/components/erp/sidebar'
+import { Dashboard } from '@/components/erp/dashboard'
+import { VehiculosList } from '@/components/erp/vehiculos-list'
+import { VehiculoDetail } from '@/components/erp/vehiculo-detail'
+import { PropietariosList } from '@/components/erp/propietarios-list'
+import { ServiciosList } from '@/components/erp/servicios-list'
 
 export default function Home() {
-  return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
+  const [currentView, setCurrentView] = useState<ViewType>('dashboard')
+  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [searchTerm, setSearchTerm] = useState('')
+  const [selectedVehiculo, setSelectedVehiculo] = useState<number | null>(null)
+
+  const handleVehiculoClick = (id: number) => {
+    setSelectedVehiculo(id)
+  }
+
+  const handleBackFromDetail = () => {
+    setSelectedVehiculo(null)
+  }
+
+  const handleViewChange = (view: ViewType) => {
+    setCurrentView(view)
+    setSelectedVehiculo(null)
+  }
+
+  const renderContent = () => {
+    // If a vehicle is selected, show detail
+    if (selectedVehiculo !== null) {
+      return (
+        <VehiculoDetail 
+          vehiculoId={selectedVehiculo} 
+          onBack={handleBackFromDetail} 
         />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
+      )
+    }
+
+    switch (currentView) {
+      case 'dashboard':
+        return <Dashboard onVehiculoClick={handleVehiculoClick} />
+      case 'vehiculos':
+        return (
+          <VehiculosList 
+            searchTerm={searchTerm} 
+            onVehiculoClick={handleVehiculoClick} 
+          />
+        )
+      case 'propietarios':
+        return <PropietariosList searchTerm={searchTerm} />
+      case 'aceite':
+        return (
+          <ServiciosList 
+            type="aceite" 
+            searchTerm={searchTerm} 
+            onVehiculoClick={handleVehiculoClick}
+          />
+        )
+      case 'verificacion':
+        return (
+          <ServiciosList 
+            type="verificacion" 
+            searchTerm={searchTerm} 
+            onVehiculoClick={handleVehiculoClick}
+          />
+        )
+      case 'tenencia':
+        return (
+          <ServiciosList 
+            type="tenencia" 
+            searchTerm={searchTerm} 
+            onVehiculoClick={handleVehiculoClick}
+          />
+        )
+      case 'llantas':
+        return (
+          <ServiciosList 
+            type="llantas" 
+            searchTerm={searchTerm} 
+            onVehiculoClick={handleVehiculoClick}
+          />
+        )
+      case 'frenos':
+        return (
+          <ServiciosList 
+            type="frenos" 
+            searchTerm={searchTerm} 
+            onVehiculoClick={handleVehiculoClick}
+          />
+        )
+      case 'amortiguadores':
+        return (
+          <ServiciosList 
+            type="amortiguadores" 
+            searchTerm={searchTerm} 
+            onVehiculoClick={handleVehiculoClick}
+          />
+        )
+      default:
+        return <Dashboard onVehiculoClick={handleVehiculoClick} />
+    }
+  }
+
+  return (
+    <div className="min-h-screen bg-background">
+      <Header 
+        onMenuClick={() => setSidebarOpen(!sidebarOpen)}
+        searchTerm={searchTerm}
+        onSearchChange={setSearchTerm}
+      />
+      <Sidebar 
+        currentView={currentView}
+        onViewChange={handleViewChange}
+        isOpen={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+      />
+      <main className="lg:pl-64 pt-4 px-4 lg:px-6 pb-8">
+        {renderContent()}
       </main>
     </div>
-  );
+  )
 }

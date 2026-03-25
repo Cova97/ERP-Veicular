@@ -1,26 +1,149 @@
-import { Injectable } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ConflictException,
+} from '@nestjs/common';
+import { PrismaService } from '@/prisma/prisma.service';
 import { CreateSubmarcaDto } from './dto/create-submarca.dto';
 import { UpdateSubmarcaDto } from './dto/update-submarca.dto';
 
 @Injectable()
 export class SubmarcaService {
-  create(createSubmarcaDto: CreateSubmarcaDto) {
-    return 'This action adds a new submarca';
+  constructor(private readonly prisma: PrismaService) {}
+
+  async create(dto: CreateSubmarcaDto) {
+    // Verificar que el modelo padre exista
+    const modelo = await this.prisma.modelo.findUnique({
+      where: { id: dto.modeloId },
+      include: { marca: true },
+    });
+    if (!modelo) {
+      throw new NotFoundException(`Modelo con id ${dto.modeloId} no encontrado`);
+    }
+
+    // Verificar unicidad nombre + modeloId (@@unique del schema)
+    const existe = await this.prisma.submarca.findUnique({
+      where: {
+        nombre_modeloId: {
+          nombre: dto.nombre,
+          modeloId: dto.modeloId,
+        },
+      },
+    });
+    if (existe) {
+      throw new ConflictException(
+        `Ya existe la submarca "${dto.nombre}" para el modelo "${modelo.nombre}" de ${modelo.marca.nombre}`,
+      );
+    }
+
+    return this.prisma.submarca.create({
+      data: dto,
+      include: {
+        modelo: { include: { marca: true } },
+      },
+    });
   }
 
-  findAll() {
-    return `This action returns all submarca`;
+  async findAll() {
+    return this.prisma.submarca.findMany({
+      orderBy: { nombre: 'asc' },
+      include: {
+        modelo: { include: { marca: true } },
+        _count: { select: { vehiculos: true } },
+      },
+    });
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} submarca`;
+  // Todas las submarcas de un modelo específico
+  async findByModelo(modeloId: number) {
+    const modelo = await this.prisma.modelo.findUnique({
+      where: { id: modeloId },
+      include: { marca: true },
+    });
+    if (!modelo) {
+      throw new NotFoundException(`Modelo con id ${modeloId} no encontrado`);
+    }
+
+    return this.prisma.submarca.findMany({
+      where: { modeloId },
+      orderBy: { nombre: 'asc' },
+      include: {
+        _count: { select: { vehiculos: true } },
+      },
+    });
   }
 
-  update(id: number, updateSubmarcaDto: UpdateSubmarcaDto) {
-    return `This action updates a #${id} submarca`;
+  async findOne(id: number) {
+    const submarca = await this.prisma.submarca.findUnique({
+      where: { id },
+      include: {
+        modelo: { include: { marca: true } },
+        vehiculos: true,
+      },
+    });
+
+    if (!submarca) {
+      throw new NotFoundException(`Submarca con id ${id} no encontrada`);
+    }
+
+    return submarca;
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} submarca`;
+  async update(id: number, dto: UpdateSubmarcaDto) {
+    await this.findOne(id); // Lanza NotFoundException si no existe
+
+    // Si cambia el modeloId, verificar que el nuevo modelo exista
+    if (dto.modeloId) {
+      const modelo = await this.prisma.modelo.findUnique({
+        where: { id: dto.modeloId },
+      });
+      if (!modelo) {
+        throw new NotFoundException(`Modelo con id ${dto.modeloId} no encontrado`);
+      }
+    }
+
+    // Verificar que la combinación nombre + modeloId no colisione con otra submarca
+    if (dto.nombre || dto.modeloId) {
+      const actual = await this.prisma.submarca.findUnique({ where: { id } });
+      const nombreFinal = dto.nombre ?? actual.nombre;
+      const modeloFinal = dto.modeloId ?? actual.modeloId;
+
+      const nombreEnUso = await this.prisma.submarca.findFirst({
+        where: {
+          nombre: nombreFinal,
+          modeloId: modeloFinal,
+          NOT: { id },
+        },
+      });
+      if (nombreEnUso) {
+        throw new ConflictException(
+          `Ya existe la submarca "${nombreFinal}" en ese modelo`,
+        );
+      }
+    }
+
+    return this.prisma.submarca.update({
+      where: { id },
+      data: dto,
+      include: {
+        modelo: { include: { marca: true } },
+      },
+    });
+  }
+
+  async remove(id: number) {
+    await this.findOne(id); // Lanza NotFoundException si no existe
+
+    // Bloquear si tiene vehículos asociados
+    const tieneVehiculos = await this.prisma.vehiculo.count({
+      where: { submarcaId: id },
+    });
+    if (tieneVehiculos > 0) {
+      throw new ConflictException(
+        `No se puede eliminar la submarca porque tiene ${tieneVehiculos} vehículo(s) asociado(s)`,
+      );
+    }
+
+    return this.prisma.submarca.delete({ where: { id } });
   }
 }

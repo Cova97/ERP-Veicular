@@ -49,7 +49,7 @@
     "prisma-graphql-type-decimal": "^4.0.2",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
-    "undici": "^7.22.0"  
+    "undici": "^7.22.0"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.2.0",

@@ -1,4 +1,15 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  ParseIntPipe,
+  HttpCode,
+  HttpStatus,
+} from '@nestjs/common';
 import { PropietarioService } from './propietario.service';
 import { CreatePropietarioDto } from './dto/create-propietario.dto';
 import { UpdatePropietarioDto } from './dto/update-propietario.dto';
@@ -7,28 +18,38 @@ import { UpdatePropietarioDto } from './dto/update-propietario.dto';
 export class PropietarioController {
   constructor(private readonly propietarioService: PropietarioService) {}
 
+  // POST /propietario
   @Post()
+  @HttpCode(HttpStatus.CREATED)
   create(@Body() createPropietarioDto: CreatePropietarioDto) {
     return this.propietarioService.create(createPropietarioDto);
   }
 
+  // GET /propietario
   @Get()
   findAll() {
     return this.propietarioService.findAll();
   }
 
+  // GET /propietario/:id  — incluye vehículos con marca/modelo/submarca
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.propietarioService.findOne(+id);
+  findOne(@Param('id', ParseIntPipe) id: number) {
+    return this.propietarioService.findOne(id);
   }
 
+  // PATCH /propietario/:id
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updatePropietarioDto: UpdatePropietarioDto) {
-    return this.propietarioService.update(+id, updatePropietarioDto);
+  update(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() updatePropietarioDto: UpdatePropietarioDto,
+  ) {
+    return this.propietarioService.update(id, updatePropietarioDto);
   }
 
+  // DELETE /propietario/:id
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.propietarioService.remove(+id);
+  @HttpCode(HttpStatus.NO_CONTENT)
+  remove(@Param('id', ParseIntPipe) id: number) {
+    return this.propietarioService.remove(id);
   }
 }

@@ -1,26 +1,202 @@
-import { Injectable } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ConflictException,
+  BadRequestException,
+} from '@nestjs/common';
+import { PrismaService } from '@/prisma/prisma.service';
+import { StatusServicio } from '@prisma/client';
 import { CreateServicioAmortiguadorDto } from './dto/create-servicio-amortiguador.dto';
 import { UpdateServicioAmortiguadorDto } from './dto/update-servicio-amortiguador.dto';
+import { RegistrarServicioAmortiguadorDto } from './dto/registrar-servicio-amortiguador.dto';
 
 @Injectable()
 export class ServicioAmortiguadorService {
-  create(createServicioAmortiguadorDto: CreateServicioAmortiguadorDto) {
-    return 'This action adds a new servicioAmortiguador';
+  constructor(private readonly prisma: PrismaService) {}
+
+  // ── Helper ─────────────────────────────────────────────────
+
+  /**
+   * Determina el status comparando km actuales del vehículo contra proximoKm.
+   * - PENDIENTE → ya superó los km o está dentro del 10% del intervalo
+   * - A_TIEMPO  → al corriente con margen suficiente
+   */
+  private calcularStatus(
+    kmActual: number,
+    proximoKm: number,
+    intervaloKm: number,
+  ): StatusServicio {
+    if (kmActual >= proximoKm) return StatusServicio.PENDIENTE;
+
+    const kmRestantes = proximoKm - kmActual;
+    const cercaPorKm = kmRestantes <= intervaloKm * 0.1;
+
+    return cercaPorKm ? StatusServicio.PENDIENTE : StatusServicio.A_TIEMPO;
   }
 
-  findAll() {
-    return `This action returns all servicioAmortiguador`;
+  // ── CRUD principal ─────────────────────────────────────────
+
+  async create(dto: CreateServicioAmortiguadorDto) {
+    const vehiculo = await this.prisma.vehiculo.findUnique({
+      where: { id: dto.vehiculoId },
+    });
+    if (!vehiculo) {
+      throw new NotFoundException(`Vehículo con id ${dto.vehiculoId} no encontrado`);
+    }
+
+    const existe = await this.prisma.servicioAmortiguador.findFirst({
+      where: { vehiculoId: dto.vehiculoId },
+    });
+    if (existe) {
+      throw new ConflictException(
+        `El vehículo ya tiene un servicio de amortiguador registrado (id: ${existe.id}). Usa el endpoint de registrar servicio para actualizarlo.`,
+      );
+    }
+
+    const intervaloKm = dto.intervaloKm ?? 80000;
+    const proximoKm = dto.kmUltimoServicio + intervaloKm;
+    const status = this.calcularStatus(vehiculo.kilometraje, proximoKm, intervaloKm);
+
+    return this.prisma.servicioAmortiguador.create({
+      data: {
+        vehiculoId: dto.vehiculoId,
+        kmUltimoServicio: dto.kmUltimoServicio,
+        intervaloKm,
+        proximoKm,
+        status,
+      },
+      include: { vehiculo: true },
+    });
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} servicioAmortiguador`;
+  async findAll() {
+    return this.prisma.servicioAmortiguador.findMany({
+      include: {
+        vehiculo: true,
+        _count: { select: { historial: true } },
+      },
+      orderBy: { proximoKm: 'asc' },
+    });
   }
 
-  update(id: number, updateServicioAmortiguadorDto: UpdateServicioAmortiguadorDto) {
-    return `This action updates a #${id} servicioAmortiguador`;
+  async findOne(id: number) {
+    const servicio = await this.prisma.servicioAmortiguador.findUnique({
+      where: { id },
+      include: {
+        vehiculo: true,
+        historial: { orderBy: { fecha: 'desc' } },
+      },
+    });
+
+    if (!servicio) {
+      throw new NotFoundException(`ServicioAmortiguador con id ${id} no encontrado`);
+    }
+
+    return servicio;
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} servicioAmortiguador`;
+  async findByVehiculo(vehiculoId: number) {
+    const vehiculo = await this.prisma.vehiculo.findUnique({
+      where: { id: vehiculoId },
+    });
+    if (!vehiculo) {
+      throw new NotFoundException(`Vehículo con id ${vehiculoId} no encontrado`);
+    }
+
+    return this.prisma.servicioAmortiguador.findFirst({
+      where: { vehiculoId },
+      include: {
+        historial: { orderBy: { fecha: 'desc' } },
+      },
+    });
+  }
+
+  async update(id: number, dto: UpdateServicioAmortiguadorDto) {
+    const servicio = await this.findOne(id);
+
+    const intervaloKm = dto.intervaloKm ?? servicio.intervaloKm;
+    const kmUltimo = dto.kmUltimoServicio ?? servicio.kmUltimoServicio;
+    const proximoKm = kmUltimo + intervaloKm;
+
+    const vehiculo = await this.prisma.vehiculo.findUnique({
+      where: { id: servicio.vehiculoId },
+    });
+    const status = this.calcularStatus(vehiculo.kilometraje, proximoKm, intervaloKm);
+
+    return this.prisma.servicioAmortiguador.update({
+      where: { id },
+      data: { ...dto, proximoKm, status },
+      include: { vehiculo: true },
+    });
+  }
+
+  async remove(id: number) {
+    await this.findOne(id);
+    return this.prisma.servicioAmortiguador.delete({ where: { id } });
+  }
+
+  // ── Registrar servicio realizado ───────────────────────────
+
+  async registrarServicio(id: number, dto: RegistrarServicioAmortiguadorDto) {
+    const servicio = await this.findOne(id);
+
+    if (dto.kmAlServicio < servicio.kmUltimoServicio) {
+      throw new BadRequestException(
+        `El kilometraje (${dto.kmAlServicio}) no puede ser menor al del último servicio (${servicio.kmUltimoServicio})`,
+      );
+    }
+
+    const proximoKm = dto.kmAlServicio + servicio.intervaloKm;
+
+    return this.prisma.$transaction(async (tx) => {
+      // 1. Guardar en historial
+      await tx.historialAmortiguador.create({
+        data: {
+          servicioId: id,
+          fecha: new Date(dto.fecha),
+          kmAlServicio: dto.kmAlServicio,
+          tipoServicio: dto.tipoServicio,
+          marca: dto.marca,
+          taller: dto.taller,
+          costo: dto.costo,
+          notas: dto.notas,
+        },
+      });
+
+      // 2. Actualizar km del vehículo si es mayor al actual
+      const vehiculo = await tx.vehiculo.findUnique({
+        where: { id: servicio.vehiculoId },
+      });
+      if (dto.kmAlServicio > vehiculo.kilometraje) {
+        await tx.vehiculo.update({
+          where: { id: servicio.vehiculoId },
+          data: { kilometraje: dto.kmAlServicio },
+        });
+      }
+
+      // 3. Actualizar el servicio
+      return tx.servicioAmortiguador.update({
+        where: { id },
+        data: {
+          kmUltimoServicio: dto.kmAlServicio,
+          proximoKm,
+          status: StatusServicio.FINALIZADO,
+        },
+        include: {
+          vehiculo: true,
+          historial: { orderBy: { fecha: 'desc' }, take: 5 },
+        },
+      });
+    });
+  }
+
+  // ── Historial ──────────────────────────────────────────────
+
+  async findHistorial(id: number) {
+    await this.findOne(id);
+    return this.prisma.historialAmortiguador.findMany({
+      where: { servicioId: id },
+      orderBy: { fecha: 'desc' },
+    });
   }
 }

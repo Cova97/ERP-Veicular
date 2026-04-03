@@ -29,6 +29,13 @@ interface VehiculoDetailProps {
   onBack: () => void
 }
 
+// Helper: convierte string ISO o Date a fecha legible, devuelve '—' si es null/undefined
+const fmt = (fecha?: string | Date | null) =>
+  fecha ? new Date(fecha).toLocaleDateString('es-MX') : '—'
+
+const num = (valor?: number | null) =>
+  valor != null ? valor.toLocaleString() : '—'
+
 export function VehiculoDetail({ vehiculoId, onBack }: VehiculoDetailProps) {
   const vehiculos = useVehiculoStore((state) => state.vehiculos)
   const vehiculo = vehiculos.find((v) => v.id === vehiculoId)
@@ -49,11 +56,11 @@ export function VehiculoDetail({ vehiculoId, onBack }: VehiculoDetailProps) {
     )
   }
 
-  const servicioAceite = vehiculo.serviciosAceite?.[0]
-  const verificacion = vehiculo.verificaciones?.[0]
-  const tenencia = vehiculo.tenencias?.[0]
-  const servicioLlantas = vehiculo.serviciosLlantas?.[0]
-  const servicioFreno = vehiculo.serviciosFreno?.[0]
+  const servicioAceite      = vehiculo.serviciosAceite?.[0]
+  const verificacion        = vehiculo.verificaciones?.[0]
+  const tenencia            = vehiculo.tenencias?.[0]
+  const servicioLlantas     = vehiculo.serviciosLlantas?.[0]
+  const servicioFreno       = vehiculo.serviciosFreno?.[0]
   const servicioAmortiguador = vehiculo.serviciosAmortiguador?.[0]
 
   const vehiculoInfo = `${vehiculo.submarca?.modelo?.marca?.nombre || ''} ${vehiculo.submarca?.modelo?.nombre || ''} - ${vehiculo.numPlaca}`
@@ -167,6 +174,7 @@ export function VehiculoDetail({ vehiculoId, onBack }: VehiculoDetailProps) {
           </TabsTrigger>
         </TabsList>
 
+        {/* ── Aceite ── */}
         <TabsContent value="aceite" className="mt-4">
           <Card className="bg-card border-border">
             <CardHeader>
@@ -192,27 +200,27 @@ export function VehiculoDetail({ vehiculoId, onBack }: VehiculoDetailProps) {
                   <div className="space-y-3">
                     <div>
                       <p className="text-xs text-muted-foreground">Último Servicio</p>
-                      <p className="font-medium">{servicioAceite.fechaUltimoServicio.toLocaleDateString()}</p>
+                      <p className="font-medium">{fmt(servicioAceite.fechaUltimoServicio)}</p>
                     </div>
                     <div>
                       <p className="text-xs text-muted-foreground">KM al Último Servicio</p>
-                      <p className="font-medium">{servicioAceite.kmUltimoServicio.toLocaleString()} km</p>
+                      <p className="font-medium">{num(servicioAceite.kmUltimoServicio)} km</p>
                     </div>
                   </div>
                   <div className="space-y-3">
                     <div>
                       <p className="text-xs text-muted-foreground">Próximo Servicio</p>
-                      <p className="font-medium">{servicioAceite.proximaFecha.toLocaleDateString()}</p>
+                      <p className="font-medium">{fmt(servicioAceite.proximaFecha)}</p>
                     </div>
                     <div>
                       <p className="text-xs text-muted-foreground">Próximo KM</p>
-                      <p className="font-medium">{servicioAceite.proximoKm.toLocaleString()} km</p>
+                      <p className="font-medium">{num(servicioAceite.proximoKm)} km</p>
                     </div>
                   </div>
                   <div className="sm:col-span-2 pt-3 border-t border-border">
                     <p className="text-xs text-muted-foreground">Intervalo</p>
                     <p className="font-medium">
-                      Cada {servicioAceite.intervaloKm.toLocaleString()} km o {servicioAceite.intervaloMeses} meses
+                      Cada {num(servicioAceite.intervaloKm)} km o {servicioAceite.intervaloMeses} meses
                     </p>
                   </div>
                 </div>
@@ -223,6 +231,7 @@ export function VehiculoDetail({ vehiculoId, onBack }: VehiculoDetailProps) {
           </Card>
         </TabsContent>
 
+        {/* ── Verificación ── */}
         <TabsContent value="verificacion" className="mt-4">
           <Card className="bg-card border-border">
             <CardHeader>
@@ -248,7 +257,7 @@ export function VehiculoDetail({ vehiculoId, onBack }: VehiculoDetailProps) {
                   <div className="space-y-3">
                     <div>
                       <p className="text-xs text-muted-foreground">Última Verificación</p>
-                      <p className="font-medium">{verificacion.fechaUltima.toLocaleDateString()}</p>
+                      <p className="font-medium">{fmt(verificacion.fechaUltima)}</p>
                     </div>
                     <div>
                       <p className="text-xs text-muted-foreground">Holograma</p>
@@ -258,7 +267,7 @@ export function VehiculoDetail({ vehiculoId, onBack }: VehiculoDetailProps) {
                   <div className="space-y-3">
                     <div>
                       <p className="text-xs text-muted-foreground">Próxima Verificación</p>
-                      <p className="font-medium">{verificacion.proximaFecha.toLocaleDateString()}</p>
+                      <p className="font-medium">{fmt(verificacion.proximaFecha)}</p>
                     </div>
                     <div>
                       <p className="text-xs text-muted-foreground">Centro</p>
@@ -273,6 +282,7 @@ export function VehiculoDetail({ vehiculoId, onBack }: VehiculoDetailProps) {
           </Card>
         </TabsContent>
 
+        {/* ── Tenencia ── */}
         <TabsContent value="tenencia" className="mt-4">
           <Card className="bg-card border-border">
             <CardHeader>
@@ -308,7 +318,7 @@ export function VehiculoDetail({ vehiculoId, onBack }: VehiculoDetailProps) {
                   <div className="space-y-3">
                     <div>
                       <p className="text-xs text-muted-foreground">Fecha Límite</p>
-                      <p className="font-medium">{tenencia.fechaLimite.toLocaleDateString()}</p>
+                      <p className="font-medium">{fmt(tenencia.fechaLimite)}</p>
                     </div>
                     <div>
                       <p className="text-xs text-muted-foreground">Folio</p>
@@ -318,8 +328,8 @@ export function VehiculoDetail({ vehiculoId, onBack }: VehiculoDetailProps) {
                   <div className="sm:col-span-2 pt-3 border-t border-border">
                     <p className="text-xs text-muted-foreground">Estado de Pago</p>
                     <p className="font-medium">
-                      {tenencia.pagado 
-                        ? `Pagado el ${tenencia.fechaPago?.toLocaleDateString()}` 
+                      {tenencia.pagado
+                        ? `Pagado el ${fmt(tenencia.fechaPago)}`
                         : 'Pendiente de pago'}
                     </p>
                   </div>
@@ -331,6 +341,7 @@ export function VehiculoDetail({ vehiculoId, onBack }: VehiculoDetailProps) {
           </Card>
         </TabsContent>
 
+        {/* ── Llantas ── */}
         <TabsContent value="llantas" className="mt-4">
           <Card className="bg-card border-border">
             <CardHeader>
@@ -356,17 +367,17 @@ export function VehiculoDetail({ vehiculoId, onBack }: VehiculoDetailProps) {
                   <div className="space-y-3">
                     <div>
                       <p className="text-xs text-muted-foreground">KM Último Servicio</p>
-                      <p className="font-medium">{servicioLlantas.kmUltimoServicio.toLocaleString()} km</p>
+                      <p className="font-medium">{num(servicioLlantas.kmUltimoServicio)} km</p>
                     </div>
                     <div>
                       <p className="text-xs text-muted-foreground">Intervalo</p>
-                      <p className="font-medium">{servicioLlantas.intervaloKm.toLocaleString()} km</p>
+                      <p className="font-medium">{num(servicioLlantas.intervaloKm)} km</p>
                     </div>
                   </div>
                   <div className="space-y-3">
                     <div>
                       <p className="text-xs text-muted-foreground">Próximo Servicio</p>
-                      <p className="font-medium">{servicioLlantas.proximoKm.toLocaleString()} km</p>
+                      <p className="font-medium">{num(servicioLlantas.proximoKm)} km</p>
                     </div>
                   </div>
                 </div>
@@ -377,6 +388,7 @@ export function VehiculoDetail({ vehiculoId, onBack }: VehiculoDetailProps) {
           </Card>
         </TabsContent>
 
+        {/* ── Frenos ── */}
         <TabsContent value="frenos" className="mt-4">
           <Card className="bg-card border-border">
             <CardHeader>
@@ -402,17 +414,17 @@ export function VehiculoDetail({ vehiculoId, onBack }: VehiculoDetailProps) {
                   <div className="space-y-3">
                     <div>
                       <p className="text-xs text-muted-foreground">KM Último Servicio</p>
-                      <p className="font-medium">{servicioFreno.kmUltimoServicio.toLocaleString()} km</p>
+                      <p className="font-medium">{num(servicioFreno.kmUltimoServicio)} km</p>
                     </div>
                     <div>
                       <p className="text-xs text-muted-foreground">Intervalo</p>
-                      <p className="font-medium">{servicioFreno.intervaloKm.toLocaleString()} km</p>
+                      <p className="font-medium">{num(servicioFreno.intervaloKm)} km</p>
                     </div>
                   </div>
                   <div className="space-y-3">
                     <div>
                       <p className="text-xs text-muted-foreground">Próximo Servicio</p>
-                      <p className="font-medium">{servicioFreno.proximoKm.toLocaleString()} km</p>
+                      <p className="font-medium">{num(servicioFreno.proximoKm)} km</p>
                     </div>
                   </div>
                 </div>
@@ -423,6 +435,7 @@ export function VehiculoDetail({ vehiculoId, onBack }: VehiculoDetailProps) {
           </Card>
         </TabsContent>
 
+        {/* ── Amortiguadores ── */}
         <TabsContent value="amortiguadores" className="mt-4">
           <Card className="bg-card border-border">
             <CardHeader>
@@ -448,17 +461,17 @@ export function VehiculoDetail({ vehiculoId, onBack }: VehiculoDetailProps) {
                   <div className="space-y-3">
                     <div>
                       <p className="text-xs text-muted-foreground">KM Último Servicio</p>
-                      <p className="font-medium">{servicioAmortiguador.kmUltimoServicio.toLocaleString()} km</p>
+                      <p className="font-medium">{num(servicioAmortiguador.kmUltimoServicio)} km</p>
                     </div>
                     <div>
                       <p className="text-xs text-muted-foreground">Intervalo</p>
-                      <p className="font-medium">{servicioAmortiguador.intervaloKm.toLocaleString()} km</p>
+                      <p className="font-medium">{num(servicioAmortiguador.intervaloKm)} km</p>
                     </div>
                   </div>
                   <div className="space-y-3">
                     <div>
                       <p className="text-xs text-muted-foreground">Próximo Servicio</p>
-                      <p className="font-medium">{servicioAmortiguador.proximoKm.toLocaleString()} km</p>
+                      <p className="font-medium">{num(servicioAmortiguador.proximoKm)} km</p>
                     </div>
                   </div>
                 </div>

@@ -1,9 +1,10 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import { Car, Bell, Search, Menu } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { getAlertas } from '@/lib/mock-data'
+import { getAlertas } from '@/lib/api'
 
 interface HeaderProps {
   onMenuClick: () => void
@@ -12,8 +13,13 @@ interface HeaderProps {
 }
 
 export function Header({ onMenuClick, searchTerm, onSearchChange }: HeaderProps) {
-  const alertas = getAlertas()
-  const alertasPendientes = alertas.filter((a) => a.status === 'PENDIENTE').length
+  const [alertasPendientes, setAlertasPendientes] = useState(0)
+
+  useEffect(() => {
+    getAlertas().then(({ verificaciones, tenencias }) => {
+      setAlertasPendientes(verificaciones.length + tenencias.length)
+    }).catch(() => setAlertasPendientes(0))
+  }, [])
 
   return (
     <header className="sticky top-0 z-50 flex h-14 items-center justify-between border-b border-border bg-background px-4 lg:px-6">

@@ -20,8 +20,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { useVehiculoStore, marcas, modelos, submarcas } from '@/lib/store'
-import type { Vehiculo } from '@/lib/mock-data'
+import { useVehiculoStore, useMarcas, useModelos, useSubmarcas } from '@/lib/store'
+import type { Vehiculo } from '@/lib/types'
 
 interface VehiculoDialogProps {
   open: boolean
@@ -30,20 +30,20 @@ interface VehiculoDialogProps {
   mode: 'create' | 'edit'
 }
 
-export function VehiculoDialog({
-  open,
-  onOpenChange,
-  vehiculo,
-  mode
-}: VehiculoDialogProps) {
-  const propietarios = useVehiculoStore((state) => state.propietarios)
-  const addVehiculo = useVehiculoStore((state) => state.addVehiculo)
-  const updateVehiculo = useVehiculoStore((state) => state.updateVehiculo)
-  const deleteVehiculo = useVehiculoStore((state) => state.deleteVehiculo)
-  
+export function VehiculoDialog({ open, onOpenChange, vehiculo, mode }: VehiculoDialogProps) {
+  const propietarios    = useVehiculoStore((state) => state.propietarios)
+  const addVehiculo     = useVehiculoStore((state) => state.addVehiculo)
+  const updateVehiculo  = useVehiculoStore((state) => state.updateVehiculo)
+  const deleteVehiculo  = useVehiculoStore((state) => state.deleteVehiculo)
+  const loadCatalogos   = useVehiculoStore((state) => state.loadCatalogos)
+
+  const marcas    = useMarcas()
+  const modelos   = useModelos()
+  const submarcas = useSubmarcas()
+
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
-  
+
   const [formData, setFormData] = useState({
     numPlaca: '',
     numSerie: '',
@@ -53,74 +53,74 @@ export function VehiculoDialog({
     anio: new Date().getFullYear().toString(),
     color: '',
     kilometraje: '0',
-    propietarioId: ''
+    propietarioId: '',
   })
+
+  // Cargar catálogos si aún no están en el store
+  useEffect(() => {
+    if (open && marcas.length === 0) loadCatalogos()
+  }, [open, marcas.length, loadCatalogos])
 
   useEffect(() => {
     if (vehiculo && mode === 'edit') {
       const modelo = vehiculo.submarca?.modelo
-      const marca = modelo?.marca
+      const marca  = modelo?.marca
       setFormData({
-        numPlaca: vehiculo.numPlaca,
-        numSerie: vehiculo.numSerie,
-        marcaId: marca?.id.toString() || '',
-        modeloId: modelo?.id.toString() || '',
-        submarcaId: vehiculo.submarcaId.toString(),
-        anio: vehiculo.anio.toString(),
-        color: vehiculo.color,
-        kilometraje: vehiculo.kilometraje.toString(),
-        propietarioId: vehiculo.propietarioId?.toString() || ''
+        numPlaca:      vehiculo.numPlaca,
+        numSerie:      vehiculo.numSerie,
+        marcaId:       marca?.id.toString() || '',
+        modeloId:      modelo?.id.toString() || '',
+        submarcaId:    vehiculo.submarcaId.toString(),
+        anio:          vehiculo.anio.toString(),
+        color:         vehiculo.color,
+        kilometraje:   vehiculo.kilometraje.toString(),
+        propietarioId: vehiculo.propietarioId?.toString() || '',
       })
     } else {
       setFormData({
-        numPlaca: '',
-        numSerie: '',
-        marcaId: '',
-        modeloId: '',
-        submarcaId: '',
-        anio: new Date().getFullYear().toString(),
-        color: '',
-        kilometraje: '0',
-        propietarioId: ''
+        numPlaca: '', numSerie: '', marcaId: '', modeloId: '',
+        submarcaId: '', anio: new Date().getFullYear().toString(),
+        color: '', kilometraje: '0', propietarioId: '',
       })
     }
   }, [vehiculo, mode, open])
 
-  const filteredModelos = modelos.filter(m => m.marcaId === parseInt(formData.marcaId))
-  const filteredSubmarcas = submarcas.filter(s => s.modeloId === parseInt(formData.modeloId))
+  const filteredModelos   = modelos.filter((m) => m.marcaId === parseInt(formData.marcaId))
+  const filteredSubmarcas = submarcas.filter((s) => s.modeloId === parseInt(formData.modeloId))
 
   const handleSubmit = async () => {
     setIsSubmitting(true)
-    await new Promise(resolve => setTimeout(resolve, 300))
-    
-    const data = {
-      numPlaca: formData.numPlaca,
-      numSerie: formData.numSerie,
-      submarcaId: parseInt(formData.submarcaId),
-      anio: parseInt(formData.anio),
-      color: formData.color,
-      kilometraje: parseInt(formData.kilometraje),
-      propietarioId: formData.propietarioId ? parseInt(formData.propietarioId) : undefined
+    try {
+      const dto = {
+        numPlaca:      formData.numPlaca,
+        numSerie:      formData.numSerie,
+        submarcaId:    parseInt(formData.submarcaId),
+        anio:          parseInt(formData.anio),
+        color:         formData.color,
+        kilometraje:   parseInt(formData.kilometraje),
+        propietarioId: formData.propietarioId ? parseInt(formData.propietarioId) : undefined,
+      }
+      if (mode === 'create') {
+        await addVehiculo(dto)
+      } else if (vehiculo) {
+        await updateVehiculo(vehiculo.id, dto)
+      }
+      onOpenChange(false)
+    } finally {
+      setIsSubmitting(false)
     }
-    
-    if (mode === 'create') {
-      addVehiculo(data)
-    } else if (vehiculo) {
-      updateVehiculo(vehiculo.id, data)
-    }
-    
-    setIsSubmitting(false)
-    onOpenChange(false)
   }
 
   const handleDelete = async () => {
     if (!vehiculo) return
     setIsSubmitting(true)
-    await new Promise(resolve => setTimeout(resolve, 300))
-    deleteVehiculo(vehiculo.id)
-    setIsSubmitting(false)
-    setShowDeleteConfirm(false)
-    onOpenChange(false)
+    try {
+      await deleteVehiculo(vehiculo.id)
+      setShowDeleteConfirm(false)
+      onOpenChange(false)
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   const isValid = formData.numPlaca && formData.numSerie && formData.submarcaId && formData.color
@@ -134,12 +134,12 @@ export function VehiculoDialog({
             {mode === 'create' ? 'Nuevo Vehículo' : 'Editar Vehículo'}
           </DialogTitle>
           <DialogDescription>
-            {mode === 'create' 
-              ? 'Ingresa los datos del nuevo vehículo' 
+            {mode === 'create'
+              ? 'Ingresa los datos del nuevo vehículo'
               : `Editando: ${vehiculo?.numPlaca}`}
           </DialogDescription>
         </DialogHeader>
-        
+
         {showDeleteConfirm ? (
           <div className="py-6 text-center space-y-4">
             <div className="h-12 w-12 rounded-full bg-destructive/20 flex items-center justify-center mx-auto">
@@ -152,9 +152,7 @@ export function VehiculoDialog({
               </p>
             </div>
             <div className="flex gap-2 justify-center">
-              <Button variant="outline" onClick={() => setShowDeleteConfirm(false)}>
-                Cancelar
-              </Button>
+              <Button variant="outline" onClick={() => setShowDeleteConfirm(false)}>Cancelar</Button>
               <Button variant="destructive" onClick={handleDelete} disabled={isSubmitting}>
                 {isSubmitting ? 'Eliminando...' : 'Eliminar'}
               </Button>
@@ -169,7 +167,7 @@ export function VehiculoDialog({
                   <Input
                     id="numPlaca"
                     value={formData.numPlaca}
-                    onChange={(e) => setFormData(prev => ({ ...prev, numPlaca: e.target.value.toUpperCase() }))}
+                    onChange={(e) => setFormData((p) => ({ ...p, numPlaca: e.target.value.toUpperCase() }))}
                     placeholder="ABC-123-A"
                   />
                 </div>
@@ -178,7 +176,7 @@ export function VehiculoDialog({
                   <Input
                     id="numSerie"
                     value={formData.numSerie}
-                    onChange={(e) => setFormData(prev => ({ ...prev, numSerie: e.target.value.toUpperCase() }))}
+                    onChange={(e) => setFormData((p) => ({ ...p, numSerie: e.target.value.toUpperCase() }))}
                     placeholder="1HGBH41JXMN109186"
                   />
                 </div>
@@ -186,23 +184,14 @@ export function VehiculoDialog({
 
               <div className="grid gap-2">
                 <Label>Marca</Label>
-                <Select 
-                  value={formData.marcaId || undefined} 
-                  onValueChange={(value) => setFormData(prev => ({ 
-                    ...prev, 
-                    marcaId: value, 
-                    modeloId: '',
-                    submarcaId: ''
-                  }))}
+                <Select
+                  value={formData.marcaId || undefined}
+                  onValueChange={(v) => setFormData((p) => ({ ...p, marcaId: v, modeloId: '', submarcaId: '' }))}
                 >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecciona una marca" />
-                  </SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder="Selecciona una marca" /></SelectTrigger>
                   <SelectContent>
-                    {marcas.map((marca) => (
-                      <SelectItem key={marca.id} value={marca.id.toString()}>
-                        {marca.nombre}
-                      </SelectItem>
+                    {marcas.map((m) => (
+                      <SelectItem key={m.id} value={m.id.toString()}>{m.nombre}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -211,51 +200,31 @@ export function VehiculoDialog({
               <div className="grid grid-cols-2 gap-4">
                 <div className="grid gap-2">
                   <Label>Modelo</Label>
-                  <Select 
-                    value={formData.modeloId || undefined} 
-                    onValueChange={(value) => setFormData(prev => ({ 
-                      ...prev, 
-                      modeloId: value,
-                      submarcaId: ''
-                    }))}
-                    disabled={!formData.marcaId || filteredModelos.length === 0}
+                  <Select
+                    value={formData.modeloId || undefined}
+                    onValueChange={(v) => setFormData((p) => ({ ...p, modeloId: v, submarcaId: '' }))}
+                    disabled={!formData.marcaId}
                   >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecciona modelo" />
-                    </SelectTrigger>
+                    <SelectTrigger><SelectValue placeholder="Selecciona modelo" /></SelectTrigger>
                     <SelectContent>
-                      {filteredModelos.length > 0 ? (
-                        filteredModelos.map((modelo) => (
-                          <SelectItem key={modelo.id} value={modelo.id.toString()}>
-                            {modelo.nombre}
-                          </SelectItem>
-                        ))
-                      ) : (
-                        <SelectItem value="no-options" disabled>Sin modelos disponibles</SelectItem>
-                      )}
+                      {filteredModelos.map((m) => (
+                        <SelectItem key={m.id} value={m.id.toString()}>{m.nombre}</SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="grid gap-2">
                   <Label>Submarca *</Label>
-                  <Select 
-                    value={formData.submarcaId || undefined} 
-                    onValueChange={(value) => setFormData(prev => ({ ...prev, submarcaId: value }))}
-                    disabled={!formData.modeloId || filteredSubmarcas.length === 0}
+                  <Select
+                    value={formData.submarcaId || undefined}
+                    onValueChange={(v) => setFormData((p) => ({ ...p, submarcaId: v }))}
+                    disabled={!formData.modeloId}
                   >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecciona submarca" />
-                    </SelectTrigger>
+                    <SelectTrigger><SelectValue placeholder="Selecciona submarca" /></SelectTrigger>
                     <SelectContent>
-                      {filteredSubmarcas.length > 0 ? (
-                        filteredSubmarcas.map((sub) => (
-                          <SelectItem key={sub.id} value={sub.id.toString()}>
-                            {sub.nombre}
-                          </SelectItem>
-                        ))
-                      ) : (
-                        <SelectItem value="no-options" disabled>Sin submarcas disponibles</SelectItem>
-                      )}
+                      {filteredSubmarcas.map((s) => (
+                        <SelectItem key={s.id} value={s.id.toString()}>{s.nombre}</SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -265,49 +234,39 @@ export function VehiculoDialog({
                 <div className="grid gap-2">
                   <Label htmlFor="anio">Año</Label>
                   <Input
-                    id="anio"
-                    type="number"
-                    min="1990"
-                    max={new Date().getFullYear() + 1}
+                    id="anio" type="number" min="1990" max={new Date().getFullYear() + 1}
                     value={formData.anio}
-                    onChange={(e) => setFormData(prev => ({ ...prev, anio: e.target.value }))}
+                    onChange={(e) => setFormData((p) => ({ ...p, anio: e.target.value }))}
                   />
                 </div>
                 <div className="grid gap-2">
                   <Label htmlFor="color">Color *</Label>
                   <Input
-                    id="color"
-                    value={formData.color}
-                    onChange={(e) => setFormData(prev => ({ ...prev, color: e.target.value }))}
-                    placeholder="Blanco"
+                    id="color" value={formData.color} placeholder="Blanco"
+                    onChange={(e) => setFormData((p) => ({ ...p, color: e.target.value }))}
                   />
                 </div>
                 <div className="grid gap-2">
                   <Label htmlFor="km">Kilometraje</Label>
                   <Input
-                    id="km"
-                    type="number"
-                    min="0"
-                    value={formData.kilometraje}
-                    onChange={(e) => setFormData(prev => ({ ...prev, kilometraje: e.target.value }))}
+                    id="km" type="number" min="0" value={formData.kilometraje}
+                    onChange={(e) => setFormData((p) => ({ ...p, kilometraje: e.target.value }))}
                   />
                 </div>
               </div>
 
               <div className="grid gap-2">
                 <Label>Propietario</Label>
-                <Select 
-                  value={formData.propietarioId || "none"} 
-                  onValueChange={(value) => setFormData(prev => ({ ...prev, propietarioId: value === "none" ? "" : value }))}
+                <Select
+                  value={formData.propietarioId || 'none'}
+                  onValueChange={(v) => setFormData((p) => ({ ...p, propietarioId: v === 'none' ? '' : v }))}
                 >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Sin asignar" />
-                  </SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder="Sin asignar" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="none">Sin asignar</SelectItem>
-                    {propietarios.map((prop) => (
-                      <SelectItem key={prop.id} value={prop.id.toString()}>
-                        {prop.nombre} {prop.apellido}
+                    {propietarios.map((p) => (
+                      <SelectItem key={p.id} value={p.id.toString()}>
+                        {p.nombre} {p.apellido}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -317,18 +276,11 @@ export function VehiculoDialog({
 
             <DialogFooter className="flex-col sm:flex-row gap-2">
               {mode === 'edit' && (
-                <Button 
-                  variant="destructive" 
-                  onClick={() => setShowDeleteConfirm(true)}
-                  className="sm:mr-auto"
-                >
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  Eliminar
+                <Button variant="destructive" onClick={() => setShowDeleteConfirm(true)} className="sm:mr-auto">
+                  <Trash2 className="h-4 w-4 mr-2" />Eliminar
                 </Button>
               )}
-              <Button variant="outline" onClick={() => onOpenChange(false)}>
-                Cancelar
-              </Button>
+              <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
               <Button onClick={handleSubmit} disabled={isSubmitting || !isValid}>
                 {isSubmitting ? 'Guardando...' : mode === 'create' ? 'Crear Vehículo' : 'Guardar Cambios'}
               </Button>

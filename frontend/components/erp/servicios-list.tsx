@@ -14,7 +14,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { useVehiculoStore } from '@/lib/store'
-import { type StatusServicio, type Vehiculo } from '@/lib/mock-data'
+import { type StatusServicio, type Vehiculo } from '@/lib/types'
 import { StatusBadge } from './status-badge'
 import { ServicioDialog } from './servicio-dialog'
 

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { User, Plus, Pencil, Trash2 } from 'lucide-react'
+import { Plus, Pencil, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -14,7 +14,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useVehiculoStore } from '@/lib/store'
-import type { Propietario } from '@/lib/mock-data'
+import type { Propietario } from '@/lib/types'
 
 interface PropietarioDialogProps {
   open: boolean
@@ -23,78 +23,66 @@ interface PropietarioDialogProps {
   mode: 'create' | 'edit'
 }
 
-export function PropietarioDialog({
-  open,
-  onOpenChange,
-  propietario,
-  mode
-}: PropietarioDialogProps) {
-  const addPropietario = useVehiculoStore((state) => state.addPropietario)
+export function PropietarioDialog({ open, onOpenChange, propietario, mode }: PropietarioDialogProps) {
+  const addPropietario    = useVehiculoStore((state) => state.addPropietario)
   const updatePropietario = useVehiculoStore((state) => state.updatePropietario)
   const deletePropietario = useVehiculoStore((state) => state.deletePropietario)
-  const vehiculos = useVehiculoStore((state) => state.vehiculos)
-  
-  const [isSubmitting, setIsSubmitting] = useState(false)
+  const vehiculos         = useVehiculoStore((state) => state.vehiculos)
+
+  const [isSubmitting, setIsSubmitting]       = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
-  
+
   const [formData, setFormData] = useState({
-    nombre: '',
-    apellido: '',
-    telefono: '',
-    email: ''
+    nombre: '', apellido: '', telefono: '', email: '',
   })
 
   useEffect(() => {
     if (propietario && mode === 'edit') {
       setFormData({
-        nombre: propietario.nombre,
+        nombre:   propietario.nombre,
         apellido: propietario.apellido,
         telefono: propietario.telefono || '',
-        email: propietario.email || ''
+        email:    propietario.email    || '',
       })
     } else {
-      setFormData({
-        nombre: '',
-        apellido: '',
-        telefono: '',
-        email: ''
-      })
+      setFormData({ nombre: '', apellido: '', telefono: '', email: '' })
     }
   }, [propietario, mode, open])
 
-  const vehiculosAsignados = propietario 
-    ? vehiculos.filter(v => v.propietarioId === propietario.id)
+  const vehiculosAsignados = propietario
+    ? vehiculos.filter((v) => v.propietarioId === propietario.id)
     : []
 
   const handleSubmit = async () => {
     setIsSubmitting(true)
-    await new Promise(resolve => setTimeout(resolve, 300))
-    
-    const data = {
-      nombre: formData.nombre,
-      apellido: formData.apellido,
-      telefono: formData.telefono || undefined,
-      email: formData.email || undefined
+    try {
+      const dto = {
+        nombre:   formData.nombre,
+        apellido: formData.apellido,
+        telefono: formData.telefono || undefined,
+        email:    formData.email    || undefined,
+      }
+      if (mode === 'create') {
+        await addPropietario(dto)
+      } else if (propietario) {
+        await updatePropietario(propietario.id, dto)
+      }
+      onOpenChange(false)
+    } finally {
+      setIsSubmitting(false)
     }
-    
-    if (mode === 'create') {
-      addPropietario(data)
-    } else if (propietario) {
-      updatePropietario(propietario.id, data)
-    }
-    
-    setIsSubmitting(false)
-    onOpenChange(false)
   }
 
   const handleDelete = async () => {
     if (!propietario) return
     setIsSubmitting(true)
-    await new Promise(resolve => setTimeout(resolve, 300))
-    deletePropietario(propietario.id)
-    setIsSubmitting(false)
-    setShowDeleteConfirm(false)
-    onOpenChange(false)
+    try {
+      await deletePropietario(propietario.id)
+      setShowDeleteConfirm(false)
+      onOpenChange(false)
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   const isValid = formData.nombre && formData.apellido
@@ -108,12 +96,12 @@ export function PropietarioDialog({
             {mode === 'create' ? 'Nuevo Propietario' : 'Editar Propietario'}
           </DialogTitle>
           <DialogDescription>
-            {mode === 'create' 
-              ? 'Ingresa los datos del nuevo propietario' 
+            {mode === 'create'
+              ? 'Ingresa los datos del nuevo propietario'
               : `Editando: ${propietario?.nombre} ${propietario?.apellido}`}
           </DialogDescription>
         </DialogHeader>
-        
+
         {showDeleteConfirm ? (
           <div className="py-6 text-center space-y-4">
             <div className="h-12 w-12 rounded-full bg-destructive/20 flex items-center justify-center mx-auto">
@@ -122,7 +110,7 @@ export function PropietarioDialog({
             <div>
               <p className="font-medium">Eliminar propietario</p>
               <p className="text-sm text-muted-foreground">
-                Esta acción no se puede deshacer. 
+                Esta acción no se puede deshacer.
                 {vehiculosAsignados.length > 0 && (
                   <span className="block mt-1 text-warning">
                     Tiene {vehiculosAsignados.length} vehículo(s) asignado(s) que quedarán sin propietario.
@@ -131,9 +119,7 @@ export function PropietarioDialog({
               </p>
             </div>
             <div className="flex gap-2 justify-center">
-              <Button variant="outline" onClick={() => setShowDeleteConfirm(false)}>
-                Cancelar
-              </Button>
+              <Button variant="outline" onClick={() => setShowDeleteConfirm(false)}>Cancelar</Button>
               <Button variant="destructive" onClick={handleDelete} disabled={isSubmitting}>
                 {isSubmitting ? 'Eliminando...' : 'Eliminar'}
               </Button>
@@ -146,42 +132,30 @@ export function PropietarioDialog({
                 <div className="grid gap-2">
                   <Label htmlFor="nombre">Nombre *</Label>
                   <Input
-                    id="nombre"
-                    value={formData.nombre}
-                    onChange={(e) => setFormData(prev => ({ ...prev, nombre: e.target.value }))}
-                    placeholder="Juan"
+                    id="nombre" value={formData.nombre} placeholder="Juan"
+                    onChange={(e) => setFormData((p) => ({ ...p, nombre: e.target.value }))}
                   />
                 </div>
                 <div className="grid gap-2">
                   <Label htmlFor="apellido">Apellido *</Label>
                   <Input
-                    id="apellido"
-                    value={formData.apellido}
-                    onChange={(e) => setFormData(prev => ({ ...prev, apellido: e.target.value }))}
-                    placeholder="Pérez García"
+                    id="apellido" value={formData.apellido} placeholder="Pérez García"
+                    onChange={(e) => setFormData((p) => ({ ...p, apellido: e.target.value }))}
                   />
                 </div>
               </div>
-
               <div className="grid gap-2">
                 <Label htmlFor="telefono">Teléfono</Label>
                 <Input
-                  id="telefono"
-                  type="tel"
-                  value={formData.telefono}
-                  onChange={(e) => setFormData(prev => ({ ...prev, telefono: e.target.value }))}
-                  placeholder="+52 55 1234 5678"
+                  id="telefono" type="tel" value={formData.telefono} placeholder="+52 55 1234 5678"
+                  onChange={(e) => setFormData((p) => ({ ...p, telefono: e.target.value }))}
                 />
               </div>
-
               <div className="grid gap-2">
                 <Label htmlFor="email">Email</Label>
                 <Input
-                  id="email"
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
-                  placeholder="correo@ejemplo.com"
+                  id="email" type="email" value={formData.email} placeholder="correo@ejemplo.com"
+                  onChange={(e) => setFormData((p) => ({ ...p, email: e.target.value }))}
                 />
               </div>
 
@@ -191,11 +165,8 @@ export function PropietarioDialog({
                     Vehículos asignados ({vehiculosAsignados.length})
                   </p>
                   <div className="flex flex-wrap gap-1">
-                    {vehiculosAsignados.map(v => (
-                      <span 
-                        key={v.id} 
-                        className="text-xs px-2 py-1 bg-secondary rounded"
-                      >
+                    {vehiculosAsignados.map((v) => (
+                      <span key={v.id} className="text-xs px-2 py-1 bg-secondary rounded">
                         {v.numPlaca}
                       </span>
                     ))}
@@ -206,18 +177,11 @@ export function PropietarioDialog({
 
             <DialogFooter className="flex-col sm:flex-row gap-2">
               {mode === 'edit' && (
-                <Button 
-                  variant="destructive" 
-                  onClick={() => setShowDeleteConfirm(true)}
-                  className="sm:mr-auto"
-                >
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  Eliminar
+                <Button variant="destructive" onClick={() => setShowDeleteConfirm(true)} className="sm:mr-auto">
+                  <Trash2 className="h-4 w-4 mr-2" />Eliminar
                 </Button>
               )}
-              <Button variant="outline" onClick={() => onOpenChange(false)}>
-                Cancelar
-              </Button>
+              <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
               <Button onClick={handleSubmit} disabled={isSubmitting || !isValid}>
                 {isSubmitting ? 'Guardando...' : mode === 'create' ? 'Crear Propietario' : 'Guardar Cambios'}
               </Button>

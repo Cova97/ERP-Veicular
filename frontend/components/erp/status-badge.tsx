@@ -1,7 +1,7 @@
 'use client'
 
 import { Badge } from '@/components/ui/badge'
-import type { StatusServicio } from '@/lib/mock-data'
+import type { StatusServicio } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
 interface StatusBadgeProps {

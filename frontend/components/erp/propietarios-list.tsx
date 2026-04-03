@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { useVehiculoStore } from '@/lib/store'
 import { PropietarioDialog } from './propietario-dialog'
-import type { Propietario } from '@/lib/mock-data'
+import type { Propietario } from '@/lib/types'
 
 interface PropietariosListProps {
   searchTerm: string

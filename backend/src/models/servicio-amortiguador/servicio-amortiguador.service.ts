@@ -37,7 +37,7 @@ export class ServicioAmortiguadorService {
   // ── CRUD principal ─────────────────────────────────────────
 
   async create(dto: CreateServicioAmortiguadorDto) {
-    const vehiculo = await this.prisma.vehiculo.findUnique({
+    const vehiculo = await this.prisma.vehiculo.findUniqueOrThrow({
       where: { id: dto.vehiculoId },
     });
     if (!vehiculo) {
@@ -96,7 +96,7 @@ export class ServicioAmortiguadorService {
   }
 
   async findByVehiculo(vehiculoId: number) {
-    const vehiculo = await this.prisma.vehiculo.findUnique({
+    const vehiculo = await this.prisma.vehiculo.findUniqueOrThrow({
       where: { id: vehiculoId },
     });
     if (!vehiculo) {
@@ -118,7 +118,7 @@ export class ServicioAmortiguadorService {
     const kmUltimo = dto.kmUltimoServicio ?? servicio.kmUltimoServicio;
     const proximoKm = kmUltimo + intervaloKm;
 
-    const vehiculo = await this.prisma.vehiculo.findUnique({
+    const vehiculo = await this.prisma.vehiculo.findUniqueOrThrow({
       where: { id: servicio.vehiculoId },
     });
     const status = this.calcularStatus(vehiculo.kilometraje, proximoKm, intervaloKm);
@@ -164,7 +164,7 @@ export class ServicioAmortiguadorService {
       });
 
       // 2. Actualizar km del vehículo si es mayor al actual
-      const vehiculo = await tx.vehiculo.findUnique({
+      const vehiculo = await tx.vehiculo.findUniqueOrThrow({
         where: { id: servicio.vehiculoId },
       });
       if (dto.kmAlServicio > vehiculo.kilometraje) {

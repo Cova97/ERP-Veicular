@@ -12,7 +12,6 @@ export class SubmarcaService {
   constructor(private readonly prisma: PrismaService) {}
 
   async create(dto: CreateSubmarcaDto) {
-    // Verificar que el modelo padre exista
     const modelo = await this.prisma.modelo.findUnique({
       where: { id: dto.modeloId },
       include: { marca: true },
@@ -21,7 +20,6 @@ export class SubmarcaService {
       throw new NotFoundException(`Modelo con id ${dto.modeloId} no encontrado`);
     }
 
-    // Verificar unicidad nombre + modeloId (@@unique del schema)
     const existe = await this.prisma.submarca.findUnique({
       where: {
         nombre_modeloId: {
@@ -54,7 +52,6 @@ export class SubmarcaService {
     });
   }
 
-  // Todas las submarcas de un modelo específico
   async findByModelo(modeloId: number) {
     const modelo = await this.prisma.modelo.findUnique({
       where: { id: modeloId },
@@ -90,9 +87,8 @@ export class SubmarcaService {
   }
 
   async update(id: number, dto: UpdateSubmarcaDto) {
-    await this.findOne(id); // Lanza NotFoundException si no existe
+    const actual = await this.findOne(id);
 
-    // Si cambia el modeloId, verificar que el nuevo modelo exista
     if (dto.modeloId) {
       const modelo = await this.prisma.modelo.findUnique({
         where: { id: dto.modeloId },
@@ -102,11 +98,9 @@ export class SubmarcaService {
       }
     }
 
-    // Verificar que la combinación nombre + modeloId no colisione con otra submarca
     if (dto.nombre || dto.modeloId) {
-      const actual = await this.prisma.submarca.findUnique({ where: { id } });
-      const nombreFinal = dto.nombre ?? actual.nombre;
-      const modeloFinal = dto.modeloId ?? actual.modeloId;
+      const nombreFinal = dto.nombre    ?? actual.nombre;
+      const modeloFinal = dto.modeloId  ?? actual.modeloId;
 
       const nombreEnUso = await this.prisma.submarca.findFirst({
         where: {
@@ -132,9 +126,8 @@ export class SubmarcaService {
   }
 
   async remove(id: number) {
-    await this.findOne(id); // Lanza NotFoundException si no existe
+    await this.findOne(id);
 
-    // Bloquear si tiene vehículos asociados
     const tieneVehiculos = await this.prisma.vehiculo.count({
       where: { submarcaId: id },
     });

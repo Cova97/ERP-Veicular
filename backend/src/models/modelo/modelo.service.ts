@@ -12,7 +12,6 @@ export class ModeloService {
   constructor(private readonly prisma: PrismaService) {}
 
   async create(createModeloDto: CreateModeloDto) {
-    // Verificar que la marca padre exista
     const marca = await this.prisma.marca.findUnique({
       where: { id: createModeloDto.marcaId },
     });
@@ -23,7 +22,6 @@ export class ModeloService {
       );
     }
 
-    // Verificar que no exista el mismo nombre dentro de la misma marca
     const existe = await this.prisma.modelo.findUnique({
       where: {
         nombre_marcaId: {
@@ -55,7 +53,6 @@ export class ModeloService {
     });
   }
 
-  // Obtener todos los modelos de una marca específica
   async findByMarca(marcaId: number) {
     const marca = await this.prisma.marca.findUnique({
       where: { id: marcaId },
@@ -92,9 +89,8 @@ export class ModeloService {
   }
 
   async update(id: number, updateModeloDto: UpdateModeloDto) {
-    await this.findOne(id); // Lanza NotFoundException si no existe
+    const actual = await this.findOne(id);
 
-    // Si cambia la marca, verificar que la nueva exista
     if (updateModeloDto.marcaId) {
       const marca = await this.prisma.marca.findUnique({
         where: { id: updateModeloDto.marcaId },
@@ -107,11 +103,9 @@ export class ModeloService {
       }
     }
 
-    // Verificar que el nuevo nombre no esté en uso en la misma marca
     if (updateModeloDto.nombre || updateModeloDto.marcaId) {
-      const actual = await this.prisma.modelo.findUnique({ where: { id } });
       const nombreFinal = updateModeloDto.nombre ?? actual.nombre;
-      const marcaFinal = updateModeloDto.marcaId ?? actual.marcaId;
+      const marcaFinal  = updateModeloDto.marcaId ?? actual.marcaId;
 
       const nombreEnUso = await this.prisma.modelo.findFirst({
         where: {
@@ -136,9 +130,8 @@ export class ModeloService {
   }
 
   async remove(id: number) {
-    await this.findOne(id); // Lanza NotFoundException si no existe
+    await this.findOne(id);
 
-    // Bloquear si tiene submarcas asociadas
     const tieneSubmarcas = await this.prisma.submarca.count({
       where: { modeloId: id },
     });

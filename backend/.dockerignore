@@ -1,0 +1,26 @@
+# Windows shortcuts
+*.lnk
+
+# End of https://www.toptal.com/developers/gitignore/api/visualstudiocode,windows,macos,linux,venv,node,nextjs
+
+# otros
+.env
+.DS_Store
+node_modules/
+uploads/
+uploads/xml/
+
+node_modules
+# Keep environment variables out of version control
+.env
+
+/generated/prisma
+
+# Ignorar control de versiones y editores
+.git
+.gitignore
+
+# Ignorar archivos locales de entorno (si usas un .env.production en su lugar)
+.env
+.env.local
+.env.production

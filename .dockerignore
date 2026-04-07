@@ -1,0 +1,14 @@
+# Ignorar dependencias locales y archivos de desarrollo
+node_modules
+.next
+npm-debug.log
+yarn-error.log
+
+# Ignorar control de versiones y editores
+.git
+.gitignore
+
+# Ignorar archivos locales de entorno (si usas un .env.production en su lugar)
+.env
+.env.local
+.env.production

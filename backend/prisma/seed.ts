@@ -18,7 +18,7 @@ import { config } from "dotenv";
 
 config();
 
-const adapter = new PrismaMariaDb(process.env.DATABASE_URL!);
+const adapter = new PrismaMariaDb(process.env.DATABASE_URL_BACK!);
 const prisma = new PrismaClient({ adapter });
 
 // ── Helpers ──────────────────────────────────────────────────

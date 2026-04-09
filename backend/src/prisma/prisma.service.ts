@@ -6,7 +6,7 @@ import 'dotenv/config';
 @Injectable()
 export class PrismaService extends PrismaClient implements OnModuleInit, OnModuleDestroy {
   constructor() {
-    const adapter = new PrismaMariaDb(process.env.DATABASE_URL!);
+    const adapter = new PrismaMariaDb(process.env.DATABASE_URL_BACK!);
     super({ adapter });
   }
 

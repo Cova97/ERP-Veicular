@@ -35,10 +35,10 @@ COPY --from=builder /app/prisma ./prisma
 
 COPY --from=builder /app/prisma.config.ts ./
 
-# Copia el cliente ya generado desde el builder 
+# Copia el cliente ya generado desde el builder ✅
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 
 EXPOSE 3001
 
 # Corre las migraciones pendientes y luego levanta el binario compilado
-CMD ["sh", "-c", "DATABASE_URL=$DATABASE_URL npx prisma migrate deploy && node dist/src/main"]
+CMD ["sh", "-c", "DATABASE_URL=$DATABASE_URL_BACK npx prisma migrate deploy && node dist/src/main"]
